@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:clickable="true"
+    android:focusable="true"
+    android:paddingBottom="@dimen/dimen_16"
+    android:paddingLeft="@dimen/activity_margin"
+    android:paddingRight="@dimen/activity_margin"
+    android:paddingTop="@dimen/dimen_16">
+
+
+    <TextView
+        android:id="@+id/timestamp"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textAlignment="viewEnd"
+        android:layout_alignParentEnd="true"
+        android:paddingStart="5dp"
+        android:paddingEnd="5dp"
+        android:textColor="@color/timestamp"
+        android:textSize="@dimen/timestamp" />
+
+    <ImageView
+        android:id="@+id/dot"
+        android:layout_width="@dimen/dot_height_new"
+        android:layout_height="wrap_content"
+        android:src="@drawable/dot_image"
+        android:layout_marginEnd="@dimen/dimen_16"
+        android:layout_centerVertical="true"
+        tools:ignore="ContentDescription" />
+
+    <TextView
+        android:id="@+id/title"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_toEndOf="@id/dot"
+        android:layout_toStartOf="@id/timestamp"
+        android:textColor="@color/note_list_text"
+        android:fontFamily="sans-serif-medium"
+        android:textSize="@dimen/note_list_title" />
+
+    <TextView
+        android:id="@+id/description"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:ellipsize="end"
+        android:maxLines="1"
+        android:layout_below="@id/title"
+        android:layout_toEndOf="@id/dot"
+        android:textColor="@color/timestamp"
+        android:textSize="@dimen/note_list_text" />
+
+    <ImageView
+        android:id="@+id/alarmIconPreview"
+        android:layout_width="wrap_content"
+        android:layout_height="@dimen/timestamp"
+        android:layout_below="@id/description"
+        android:layout_alignBottom="@id/alarmDatePreview"
+        android:src="@drawable/ic_notification_gray"
+        android:contentDescription="@string/alarm_bell"
+        android:layout_toEndOf="@id/dot" />
+
+    <TextView
+        android:id="@+id/alarmDatePreview"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/description"
+        android:layout_toEndOf="@id/alarmIconPreview"
+        android:textColor="@color/timestamp"
+        android:textSize="@dimen/timestamp" />
+
+    <TextView
+        android:id="@+id/listName"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/alarmDatePreview"
+        android:layout_toEndOf="@id/dot"
+        android:textColor="@color/timestamp"
+        android:textSize="@dimen/timestamp" />
+
+</RelativeLayout>

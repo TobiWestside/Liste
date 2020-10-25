@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:paddingLeft="@dimen/activity_margin"
+    android:paddingRight="@dimen/activity_margin"
+    android:paddingTop="@dimen/activity_margin">
+
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top">
+        <ImageButton android:id="@+id/edit_entry_button"
+            android:layout_height="wrap_content"
+            android:layout_width="wrap_content"
+            android:layout_alignParentEnd="true"
+            android:src="@drawable/ic_action_edit"
+            android:contentDescription="@string/edit_pencil"
+            android:background="@null" />
+
+        <TextView android:id="@+id/view_entry_title"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentStart="true"
+            android:layout_toStartOf="@id/edit_entry_button"
+            android:layout_marginBottom="@dimen/dimen_16"
+            android:fontFamily="sans-serif-medium"
+            android:autoLink="web"
+            android:textIsSelectable="true"
+            android:textColor="@color/note_list_text"
+            android:textSize="@dimen/lbl_new_note_title"
+            android:maxLines="3"
+            android:scrollbars="vertical"
+            android:textStyle="normal" />
+    </RelativeLayout>
+    <TextView
+        android:id="@+id/view_list"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textColor="@color/note_list_text" />
+
+    <TextView
+        android:id="@+id/view_description"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@android:color/transparent"
+        android:textColor="@color/note_list_text"
+        android:gravity="top"
+        android:lines="8"
+        android:scrollbars = "vertical"
+        android:autoLink="web"
+        android:textIsSelectable="true"
+        android:textSize="@dimen/input_new_note" />
+
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_vertical"
+        android:layout_marginTop="@dimen/activity_margin">
+
+        <ImageView
+            android:id="@+id/alarmIcon"
+            android:src="@drawable/ic_notification_gray"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:contentDescription="@string/alarm_bell"
+            android:visibility="gone"/>
+
+        <TextView
+            android:id="@+id/alarmDateTextView"
+            android:textSize="@dimen/input_new_note"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_centerInParent="true"
+            android:layout_toEndOf="@id/alarmTimeTextView"
+            android:layout_marginStart="@dimen/dimen_16"
+            android:visibility="gone"/>
+
+        <TextView
+            android:id="@+id/alarmTimeTextView"
+            android:textSize="@dimen/input_new_note"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_centerInParent="true"
+            android:layout_toEndOf="@id/alarmIcon"
+            android:layout_marginStart="@dimen/dimen_16"
+            android:visibility="gone"/>
+    </RelativeLayout>
+
+</LinearLayout>

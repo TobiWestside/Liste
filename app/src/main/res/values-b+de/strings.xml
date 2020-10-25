@@ -1,0 +1,17 @@
+<resources>
+    <string name="app_name">Liste</string>
+    <string name="action_backup">Sicherung</string>
+
+    <!-- Entries -->
+    <string name="msg_no_notes">Drücke auf das + um eine Liste zu erstellen</string>
+    <string name="hint_enter_title">Titel eingeben</string>
+    <string name="hint_enter_description">Beschreibung eingeben</string>
+
+    <!-- Backup -->
+    <string name="backup_title">Sicherung</string>
+
+    <!-- Groups -->
+    <string name="lbl_new_list_title">Neue Liste</string>
+    <string name="lbl_edit_list_title">Liste bearbeiten</string>
+    <string name="hint_enter_name">Name eingeben!</string>
+</resources>

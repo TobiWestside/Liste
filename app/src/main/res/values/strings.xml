@@ -1,0 +1,53 @@
+<resources>
+    <string name="app_name">List</string>
+    <string name="action_show_all">Show all</string>
+    <string name="all_lists">All Lists</string>
+    <string name="action_backup">Backup</string>
+    <string name="default_list_name">Notes</string>
+
+    <!-- Entries -->
+    <string name="msg_no_notes">Add a list by tapping the + button</string>
+    <string name="hint_enter_title">Enter a title</string>
+    <string name="hint_enter_description">Enter a description!</string>
+    <string name="all_entries">All Entries</string>
+    <string name="deleted">deleted</string>
+    <string name="undo">UNDO</string>
+
+    <!-- Lists -->
+    <string name="lbl_new_list_title">New List</string>
+    <string name="lbl_edit_list_title">Edit List</string>
+    <string name="hint_enter_name">Enter a name!</string>
+    <string name="default_name">Unnamed List</string>
+    <string name="cant_be_deleted">List can\'t be deleted because</string>
+    <string name="reason_last_list">there must be at least one list</string>
+    <string name="reason_still_entries">it still contains entries</string>
+    <string name="add_new_list">New list…</string>
+
+    <!-- Backup -->
+    <string name="backup_title">Backup</string>
+    <string name="backup_create">Create Backup</string>
+    <string name="backup_restore">Restore Backup</string>
+    <string name="backup_start">Starting backup…</string>
+    <string name="backup_end">Backup complete!</string>
+    <string name="backup_fail">Backup failed!</string>
+    <string name="backup_restore_end">Backup restored!</string>
+    <string name="backup_restore_fail">Backup restore failed!</string>
+
+    <!-- Buttons -->
+    <string name="ok">OK</string>
+    <string name="cancel">Cancel</string>
+    <string name="save">Save</string>
+    <string name="update">Update</string>
+    <string name="edit_pencil">Edit pencil</string>
+
+    <!-- Options -->
+    <string name="delete">Delete</string>
+
+    <!-- Alarm -->
+    <string name="alarm_off_label">Alarm off</string>
+    <string name="alarm_on_label">Alarm on</string>
+    <string name="alarm_bell">Alarm bell</string>
+
+    <!-- Notification -->
+    <string name="notification_title">Reminder</string>
+</resources>

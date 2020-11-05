@@ -1215,6 +1215,7 @@ public class MainActivity extends AppCompatActivity {
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         final int id = item.getItemId();
+        final FloatingActionButton fab = findViewById(R.id.fab);
         switch (id){
             // Show all list entries
             case R.id.action_show_all:
@@ -1231,7 +1232,6 @@ public class MainActivity extends AppCompatActivity {
                     listEntryList.get(0).setShowListName(true);
                 }
                 // Set fab icon
-                FloatingActionButton fab = findViewById(R.id.fab);
                 Utilities.setAddListEntryFAB(MainActivity.this, fab);
                 currentlyDisplayed = Constants.displayedType.ListEntries;
                 // Refresh the view
@@ -1239,7 +1239,10 @@ public class MainActivity extends AppCompatActivity {
                 // Set title
                 setTitle(R.string.all_entries);
                 return true;
-
+            case R.id.action_show_all_lists:
+                displayLists();
+                Utilities.setAddListFAB(MainActivity.this, fab);
+                return true;
             // Show backup dialog
             case R.id.action_backup:
                 showBackupDialog();

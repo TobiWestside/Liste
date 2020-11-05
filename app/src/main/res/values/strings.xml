@@ -1,6 +1,7 @@
 <resources>
     <string name="app_name">List</string>
-    <string name="action_show_all">Show all</string>
+    <string name="action_show_all">Show all entries</string>
+    <string name="action_show_lists">Show all lists</string>
     <string name="all_lists">All Lists</string>
     <string name="action_backup">Backup</string>
     <string name="default_list_name">Notes</string>

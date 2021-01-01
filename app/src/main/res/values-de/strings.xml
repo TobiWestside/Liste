@@ -4,7 +4,6 @@
     <string name="cancel">Abbrechen</string>
     <string name="save">Speichern</string>
     <string name="update">Aktualisieren</string>
-    <string name="delete">Löschen</string>
     <string name="action_show_all">Alle Einträge zeigen</string>
     <string name="action_show_lists">Alle Listen zeigen</string>
     <string name="all_entries">Alle Einträge</string>
@@ -15,9 +14,6 @@
     <string name="backup_create">Sicherung erstellen</string>
     <string name="default_name">Unbenannte Liste</string>
     <string name="notification_title">Erinnerung</string>
-    <string name="alarm_off_label">Alarm aus</string>
-    <string name="alarm_on_label">Alarm an</string>
-    <string name="reason_last_list">es mindestens eine Liste geben muss</string>
     <string name="reason_still_entries">sie noch Einträge enthält</string>
     <string name="default_list_name">Notizen</string>
     <string name="add_new_list">Neue Liste…</string>
@@ -29,5 +25,7 @@
     <string name="backup_restore_fail">Wiederherstellung fehlgeschlagen!</string>
     <string name="alarm_bell">Alarm Glocke</string>
     <string name="edit_pencil">Bearbeiten Stift</string>
+    <string name="add_description">Beschreibung hinzufügen</string>
+    <string name="select_list">Liste auswählen</string>
 
 </resources>

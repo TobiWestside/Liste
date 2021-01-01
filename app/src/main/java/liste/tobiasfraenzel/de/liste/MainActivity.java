@@ -10,7 +10,10 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.os.Build;
 import android.os.Bundle;
+import android.text.Editable;
+import android.text.Html;
 import android.text.TextUtils;
+import android.text.TextWatcher;
 import android.text.format.DateFormat;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -28,7 +31,6 @@ import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.TimePicker;
 import android.widget.Toast;
-import android.widget.ToggleButton;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
@@ -81,6 +83,7 @@ public class MainActivity extends AppCompatActivity {
     private BackupHelper.BackupMode backupMode;
     private Constants.displayedType currentlyDisplayed;
     private DatabaseHelper db;
+    private int listOfEntry = -1;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -149,7 +152,7 @@ public class MainActivity extends AppCompatActivity {
                     }
                 }
                 final int position = listEntryList.indexOf(entry);
-                showDisplayListEntryDialog(position);
+                showDisplayListEntryDialog(position, null);
             }
         } else {
             // Log info in case of error
@@ -186,7 +189,7 @@ public class MainActivity extends AppCompatActivity {
                 // If ListEntries are shown in the main view, a single ListEntry
                 // was tapped on -> open dialog to show the ListEntry
                 if (currentlyDisplayed.equals(Constants.displayedType.ListEntries)) {
-                    showDisplayListEntryDialog(position);
+                    showDisplayListEntryDialog(position, null);
                 } else {
                     // If lists are shown in the main view, a list was tapped on
                     // -> display items of the list
@@ -330,7 +333,7 @@ public class MainActivity extends AppCompatActivity {
     private void handleSwipeToEdit(final int position) {
         if (currentlyDisplayed.equals(Constants.displayedType.ListEntries)) {
             // Edit dialog for entries
-            showEditListEntryDialog(position, null);
+            showDisplayListEntryDialog(position, null);
         } else {
             // Edit dialog for lists
             showListDialog(position, null);
@@ -395,7 +398,7 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View view) {
                 if (currentlyDisplayed.equals(Constants.displayedType.ListEntries)) {
-                    showEditListEntryDialog(-1, "");
+                    showDisplayListEntryDialog(-1, null);
                 } else {
                     showListDialog( -1, null);
                 }
@@ -433,7 +436,7 @@ public class MainActivity extends AppCompatActivity {
         final String sharedText = intent.getStringExtra(Intent.EXTRA_TEXT);
         if (sharedText != null) {
             // Set text as description of a new list entry
-            showEditListEntryDialog(-1, sharedText);
+            showDisplayListEntryDialog(-1, sharedText);
         }
     }
 
@@ -581,7 +584,7 @@ public class MainActivity extends AppCompatActivity {
 
         // Inflate the layout of the dialog
         final LayoutInflater layoutInflaterAndroid = LayoutInflater.from(getApplicationContext());
-        final View view = layoutInflaterAndroid.inflate(R.layout.edit_group_dialog, null);
+        final View view = layoutInflaterAndroid.inflate(R.layout.edit_list_dialog, null);
 
         // Build dialog with the layout
         final android.app.AlertDialog.Builder alertDialogBuilderUserInput =
@@ -689,49 +692,294 @@ public class MainActivity extends AppCompatActivity {
     }
 
     /**
+     * Convert date and time into the expected format for alarm dates
+     * @param date String containing the date
+     * @param time String containing the time
+     * @return Alarm date in format Constants.ALARM_DATE_FORMAT
+     */
+    private String convertDateAndTimeToAlarmDate(String date, String time) {
+        try {
+            Log.d(Utilities.getLogTag(), "Date before parsing: " + date);
+            Log.d(Utilities.getLogTag(), "Time before parsing: " + time);
+
+            final Date parsedDate = Utilities.parseFromLocalDateString(date);
+            final Date parsedTime = Utilities.parseFromLocalTimeString(time);
+
+            final SimpleDateFormat dateFormat = Utilities.getDateFormat();
+            final SimpleDateFormat timeFormat = Utilities.getTimeFormat();
+
+            final String newDate = dateFormat.format(parsedDate);
+            final String newTime = timeFormat.format(parsedTime);
+
+            final String newAlarmDateString = newDate + " " + newTime;
+            Log.d(Utilities.getLogTag(), "newAlarmDateString: " + newAlarmDateString);
+            return newAlarmDateString;
+        } catch (ParseException e) {
+            e.printStackTrace();
+        }
+        return "";
+    }
+
+    /**
+     * Parse alarm date from entry. If there's an exception, return the default date.
+     * @param entry The entry
+     * @param defaultDate The default date
+     * @return The parsed alarm date or the default date
+     */
+    private Date parseEntryAlarmDate(final ListEntry entry, final Date defaultDate) {
+        final Date tempAlarmDate = new Date();
+        final SimpleDateFormat fullDateFormat = Utilities.getFullDateFormat();
+        try {
+            tempAlarmDate.setTime(fullDateFormat.parse(entry.getAlarmDate()).getTime());
+        } catch (ParseException | NullPointerException e) {
+            Log.e(Utilities.getLogTag(), "Error parsing alarm date");
+            tempAlarmDate.setTime(defaultDate.getTime());
+        }
+        return tempAlarmDate;
+    }
+
+    /**
      * Show dialog that displays one list entry
      * @param position Position of the entry to be displayed in the listEntryList
      */
-    private void showDisplayListEntryDialog(final int position) {
-        final ListEntry entry = listEntryList.get(position);
+    private void showDisplayListEntryDialog(final int position, final String defaultText) {
+        ListEntry tempEntry;
+        if (position >= 0) {
+            tempEntry = listEntryList.get(position);
+            listOfEntry = tempEntry.getListId();
+        } else {
+            if (displayedList != null) {
+                // If a specific list was shown, then preselect it
+                listOfEntry = displayedList.getId();
+            } else {
+                // Else, preselect the first list
+                listOfEntry = db.getAllLists().get(0).getId();
+            }
+            tempEntry = new ListEntry(-1, "", "", null, -1, listOfEntry);
+        }
+        final ListEntry entry = tempEntry;
+
+        final String oldTitle = entry.getTitle();
         // Get the view
         final LayoutInflater layoutInflaterAndroid = LayoutInflater.from(MainActivity.this);
         final View view = layoutInflaterAndroid.inflate(R.layout.show_dialog, null);
 
+        // Set texts and buttons
+        final EditText showTitle = view.findViewById(R.id.view_entry_title);
+        final EditText showDescription = view.findViewById(R.id.view_description);
+        final ImageButton editButton = view.findViewById(R.id.edit_entry_button);
+        final TextView alarmDateTextView = view.findViewById(R.id.alarmDateTextView);
+        final TextView alarmTimeTextView = view.findViewById(R.id.alarmTimeTextView);
+
         // Build the dialog
         final AlertDialog.Builder alertDialogBuilder = new AlertDialog.Builder(MainActivity.this);
         alertDialogBuilder.setView(view);
-        alertDialogBuilder.setNeutralButton(R.string.ok, new DialogInterface.OnClickListener() {
+        alertDialogBuilder.setPositiveButton(R.string.ok, new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialogInterface, int i) {
+                ListEntry newEntry;
+                if (listOfEntry == -1) {
+                    listOfEntry = db.getAllLists().get(0).getId();
+                }
+                if (position >= 0) {
+                    newEntry = updateListEntryAndRefresh(entry.getTitle(), entry.getDescription(), listOfEntry, position, entry.getAlarmDate());
+                } else {
+                    newEntry = insertListEntryInDBAndRefresh(entry.getTitle(), entry.getDescription(), listOfEntry, entry.getAlarmDate());
+                }
+                // If the alarm is on
+                if (View.VISIBLE == alarmDateTextView.getVisibility()) {
+                    AlarmHandler.cancelAlarm(MainActivity.this, oldTitle, newEntry.getId());
+                    final Calendar newAlarmDate = Calendar.getInstance();
+                    try {
+                        //noinspection ConstantConditions
+                        newAlarmDate.setTime(Utilities.getFullDateFormat().parse(newEntry.getAlarmDate()));
+                    } catch (ParseException e) {
+                        e.printStackTrace();
+                    }
+                    AlarmHandler.setAlarm(MainActivity.this, newAlarmDate, newEntry.getTitle(), newEntry.getId());
+                } else {
+                    // If the alarm is off
+                    AlarmHandler.cancelAlarm(MainActivity.this, oldTitle, newEntry.getId());
+                }
+                refreshList();
+            }
+        });
+        alertDialogBuilder.setNegativeButton(R.string.cancel, new DialogInterface.OnClickListener() {
             public void onClick(DialogInterface dialogBox, int id) {
+                listOfEntry = -1;
                 dialogBox.dismiss();
             }
         });
         final AlertDialog alertDialog = alertDialogBuilder.create();
 
-        // Set texts and buttons
-        final TextView showTitle = view.findViewById(R.id.view_entry_title);
-        final TextView showDescription = view.findViewById(R.id.view_description);
-        final TextView showList = view.findViewById(R.id.view_list);
-        final ImageButton editButton = view.findViewById(R.id.edit_entry_button);
-        final TextView alarmTimeTextView = view.findViewById(R.id.alarmTimeTextView);
-        final TextView alarmDateTextView = view.findViewById(R.id.alarmDateTextView);
+        // If this is a new entry, display the keyboard
+        if (position == -1) {
+            if (showTitle.requestFocus()) {
+                Objects.requireNonNull(alertDialog.getWindow()).
+                        setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_VISIBLE);
+            }
+        }
+
+        alarmTimeTextView.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) { }
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) { }
+
+            @Override
+            public void afterTextChanged(Editable s) {
+                Log.d(Utilities.getLogTag(), "Time changed: " + s.toString());
+                String dateString = alarmDateTextView.getText().toString();
+                String timeString = alarmTimeTextView.getText().toString();
+                String alarmDate = convertDateAndTimeToAlarmDate(dateString, timeString);
+                entry.setAlarmDate(alarmDate);
+            }
+        });
+
+        alarmDateTextView.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+            }
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) { }
+
+            @Override
+            public void afterTextChanged(Editable s) {
+                Log.d(Utilities.getLogTag(), "Date changed: " + s.toString());
+                String dateString = alarmDateTextView.getText().toString();
+                String timeString = alarmTimeTextView.getText().toString();
+                String alarmDate = convertDateAndTimeToAlarmDate(dateString, timeString);
+                entry.setAlarmDate(alarmDate);
+            }
+        });
+
         final ImageView alarmIcon = view.findViewById(R.id.alarmIcon);
+
+        final Date defaultAlarmDate = new Date();
+        final String oldAlarmDate = entry.getAlarmDate();
+        if (position >= 0) {
+            if (oldAlarmDate != null) {
+                final SimpleDateFormat fullDateFormat = Utilities.getFullDateFormat();
+                try {
+                    //noinspection ConstantConditions
+                    defaultAlarmDate.setTime(fullDateFormat.parse(oldAlarmDate).getTime());
+                    alarmTimeTextView.setVisibility(View.VISIBLE);
+                    alarmDateTextView.setVisibility(View.VISIBLE);
+                    alarmIcon.setImageDrawable(getDrawable(R.drawable.ic_notification_on));
+                } catch (ParseException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+
+        alarmIcon.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (View.GONE == alarmTimeTextView.getVisibility()) {
+                    alarmDateTextView.setText(Utilities.convertToLocalDateString(defaultAlarmDate));
+                    alarmTimeTextView.setText(Utilities.convertToLocalTimeString(defaultAlarmDate));
+                    alarmTimeTextView.setVisibility(View.VISIBLE);
+                    alarmDateTextView.setVisibility(View.VISIBLE);
+                    alarmIcon.setImageDrawable(getDrawable(R.drawable.ic_notification_on));
+                    String dateString = alarmDateTextView.getText().toString();
+                    String timeString = alarmTimeTextView.getText().toString();
+                    String alarmDate = convertDateAndTimeToAlarmDate(dateString, timeString);
+                    entry.setAlarmDate(alarmDate);
+                } else {
+                    alarmTimeTextView.setVisibility(View.GONE);
+                    alarmDateTextView.setVisibility(View.GONE);
+                    alarmIcon.setImageDrawable(getDrawable(R.drawable.ic_notification_off_grey));
+                    entry.setAlarmDate(null);
+                }
+            }
+        });
+
+        alarmDateTextView.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                // Show DatePicker
+                // Parse date shown in text view
+                final Date tempAlarmDate = parseEntryAlarmDate(entry, defaultAlarmDate);
+                // If the default date is shown in the text view use it to initialize the DatePicker,
+                // if another date is shown, use that one
+                if (tempAlarmDate.equals(defaultAlarmDate)) {
+                    showDatePickerDialog((TextView) v.getRootView().findViewById(R.id.alarmDateTextView),
+                            defaultAlarmDate);
+                } else {
+                    showDatePickerDialog((TextView) v.getRootView().findViewById(R.id.alarmDateTextView),
+                            tempAlarmDate);
+                }
+            }
+        });
+        alarmTimeTextView.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                // Show TimePicker
+                // Parse date shown in text view
+                final Date tempAlarmDate = parseEntryAlarmDate(entry, defaultAlarmDate);
+                // If the default date is shown in the text view use it to initialize the DatePicker,
+                // if another date is shown, use that one
+                if (tempAlarmDate.equals(defaultAlarmDate)) {
+                    showTimePickerDialog((TextView) v.getRootView().findViewById(R.id.alarmTimeTextView),
+                            defaultAlarmDate);
+                } else {
+                    showTimePickerDialog((TextView) v.getRootView().findViewById(R.id.alarmDateTextView),
+                            tempAlarmDate);
+                }
+            }
+        });
+
         editButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                alertDialog.dismiss();
-                showEditListEntryDialog(position, null);
+                showListSelectionDialog(position);
             }
         });
-        showTitle.setText(entry.getTitle());
+        if (!entry.getTitle().isEmpty()) {
+            showTitle.setText(entry.getTitle());
+        } else {
+            showTitle.setHint(R.string.hint_enter_title);
+        }
+        showTitle.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence charSequence, int i, int i1, int i2) { }
+
+            @Override
+            public void onTextChanged(CharSequence charSequence, int i, int i1, int i2) { }
+
+            @Override
+            public void afterTextChanged(Editable editable) {
+                Log.d(Utilities.getLogTag(), "Title updated: " + editable.toString());
+                entry.setTitle(editable.toString());
+            }
+        });
+
+
         if (!entry.getDescription().isEmpty()) {
-            showDescription.setVisibility(View.VISIBLE);
             showDescription.setText(entry.getDescription());
         } else {
-            showDescription.setVisibility(View.GONE);
+            showDescription.setHint(R.string.hint_enter_description);
+        }
+        showDescription.setVisibility(View.VISIBLE);
+        showDescription.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence charSequence, int i, int i1, int i2) { }
+
+            @Override
+            public void onTextChanged(CharSequence charSequence, int i, int i1, int i2) { }
+
+            @Override
+            public void afterTextChanged(Editable editable) {
+                Log.d(Utilities.getLogTag(), "Description updated: " + editable.toString());
+                entry.setDescription(editable.toString().trim());
+            }
+        });
+        if (defaultText != null) {
+            showDescription.setText(defaultText);
         }
 
-        showList.setText(db.getListTitle(entry.getListId()));
         Log.d(Utilities.getLogTag(), "ShowNote: Alarm date: " + entry.getAlarmDate());
         if (entry.getAlarmDate() != null) {
             Date parsedAlarmDate = null;
@@ -855,271 +1103,68 @@ public class MainActivity extends AppCompatActivity {
     }
 
     /**
-     * Show dialog to create or edit one list entry.
-     * If the user wants to update an existing list entry, set shouldUpdate = true.
-     * In this case, the text fields are populated with the existing texts from the DB and
-     * the button text is changed from SAVE to UPDATE.
+     * Show dialog to change the list of a list entry.
+     * The list of the entry is preselected in the Spinner.
      * @param position Position of the entry to be updated or -1 if a new entry is created
-     * @param defaultText Text to be shown in the description
      */
-    private void showEditListEntryDialog(final int position, final String defaultText) {
+    private void showListSelectionDialog(final int position) {
         final boolean isUpdate = position > -1;
         // Get the view
         final LayoutInflater layoutInflaterAndroid = LayoutInflater.from(getApplicationContext());
-        final View view = layoutInflaterAndroid.inflate(R.layout.edit_dialog, null);
+        final View view = layoutInflaterAndroid.inflate(R.layout.list_selection_dialog, null);
 
         // Build the dialog
         final AlertDialog.Builder alertDialogBuilderUserInput = new AlertDialog.Builder(MainActivity.this);
+        // Set title text color
         alertDialogBuilderUserInput.setView(view);
+        String color;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            color = String.valueOf(getColor(R.color.colorAccent));
+        } else {
+            color = "#D81B60";
+        }
+        final String colorHtmlString = "<font color='" + color + "'>" + getString(R.string.select_list) + "</font>";
+        alertDialogBuilderUserInput.setTitle(Html.fromHtml(colorHtmlString));
 
-        final EditText inputTitle = view.findViewById(R.id.title_edit);
+        // Initialize list selection dropdown
+        final Spinner listSelection = view.findViewById(R.id.list_selection);
+        int tempListId;
+        if (isUpdate) {
+            tempListId = initializeListSelectionSpinner(listSelection, listEntryList.get(position));
+        } else {
+            tempListId = initializeListSelectionSpinner(listSelection, null);
+        }
+        final int oldListId = tempListId;
 
         alertDialogBuilderUserInput
-                .setPositiveButton(isUpdate ? R.string.update : R.string.save, new DialogInterface.OnClickListener() {
-                    public void onClick(DialogInterface dialogBox, int id) { }
+                .setPositiveButton(R.string.ok, new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface dialogBox, int id) {
+                        listOfEntry = ((MyList) listSelection.getSelectedItem()).getId();
+                        dialogBox.dismiss();
+                    }
                 })
                 .setNegativeButton(R.string.cancel,
                         new DialogInterface.OnClickListener() {
-                            public void onClick(DialogInterface dialogBox, int id) { }
+                            public void onClick(DialogInterface dialogBox, int id) {
+                                listOfEntry = oldListId;
+                                dialogBox.dismiss();
+                            }
                         });
 
         // Show dialog
         final AlertDialog alertDialog = alertDialogBuilderUserInput.create();
-        // Show keyboard when dialog is shown
-        if (inputTitle.requestFocus()) {
-            Objects.requireNonNull(alertDialog.getWindow()).
-                    setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_VISIBLE);
-        }
-
-        // Set texts, buttons and other elements
-        final EditText inputDescription = view.findViewById(R.id.description_edit);
-        final ImageButton deleteButton = view.findViewById(R.id.delete_entry_button);
-        if (isUpdate) {
-            deleteButton.setVisibility(View.VISIBLE);
-            deleteButton.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    alertDialog.dismiss();
-                    deleteListEntryWithUndo(position);
-                }
-            });
-        } else {
-            deleteButton.setVisibility(View.GONE);
-        }
-
-        final ToggleButton toggleAlarmButton = view.findViewById(R.id.toggleAlarmButton);
-        toggleAlarmButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                onAlarmToggleClicked((ToggleButton) v);
-            }
-        });
-        if (isUpdate) {
-            if (listEntryList.get(position).getAlarmDate() != null) {
-                toggleAlarmButton.setChecked(true);
-            }
-        }
-        final Spinner listSelection = view.findViewById(R.id.group_selection);
-        final Date defaultAlarmDate = new Date();
-        if (isUpdate) {
-            final String formattedAlarmDate = listEntryList.get(position).getAlarmDate();
-            if (formattedAlarmDate != null) {
-                final SimpleDateFormat fullDateFormat = Utilities.getFullDateFormat();
-                try {
-                    //noinspection ConstantConditions
-                    defaultAlarmDate.setTime(fullDateFormat.parse(formattedAlarmDate).getTime());
-                } catch (ParseException e) {
-                    e.printStackTrace();
-                }
-            }
-        }
-
-        final TextView showAlarmDateTextView = view.findViewById(R.id.alarmDateTextView);
-        showAlarmDateTextView.setText(Utilities.convertToLocalDateString(defaultAlarmDate));
-        final TextView showAlarmTimeTextView = view.findViewById(R.id.alarmTimeTextView);
-        showAlarmTimeTextView.setText(Utilities.convertToLocalTimeString(defaultAlarmDate));
-
-        showAlarmDateTextView.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                // Show DatePicker
-                showDatePickerDialog((TextView) v.getRootView().findViewById(R.id.alarmDateTextView),
-                        defaultAlarmDate);
-            }
-        });
-        showAlarmTimeTextView.setOnClickListener(new View.OnClickListener() {
-             @Override
-             public void onClick(View v) {
-                 // Show TimePicker
-                 showTimePickerDialog((TextView) v.getRootView().findViewById(R.id.alarmTimeTextView),
-                         defaultAlarmDate);
-             }
-         });
-
-        // Initialize list selection dropdown
-        if (isUpdate) {
-            initializeListSelectionSpinner(listSelection, true, listEntryList.get(position));
-        } else {
-            initializeListSelectionSpinner(listSelection, false, null);
-        }
-
-        // If this is an update, load the existing texts
-        if (isUpdate) {
-            inputTitle.setText(listEntryList.get(position).getTitle());
-            inputTitle.setSelection(inputTitle.getText().length());
-            inputDescription.setText(listEntryList.get(position).getDescription());
-        }
-
-        // Set description if one is already provided
-        // (for example when the app is started through the "Share via..." function)
-        if (defaultText != null && !defaultText.isEmpty()) {
-            inputDescription.setText(defaultText);
-        }
-
         alertDialog.show();
-        alertDialog.getButton(AlertDialog.BUTTON_POSITIVE).setVisibility(View.VISIBLE);
-        // Handle tap on positive button (SAVE, UPDATE)
-        alertDialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                handleEditDialogPositiveButton(toggleAlarmButton.isChecked(),
-                        showAlarmDateTextView.getText().toString(),
-                        showAlarmTimeTextView.getText().toString(), inputTitle.getText().toString(),
-                        inputDescription.getText().toString(),
-                        ((MyList) listSelection.getSelectedItem()).getId(), position, alertDialog);
-            }
-        });
-        // Handle tap on negative button (CANCEL)
-        // Simply close dialog and show item again
-        alertDialog.getButton(AlertDialog.BUTTON_NEGATIVE).setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                alertDialog.dismiss();
-                if (isUpdate) {
-                    showDisplayListEntryDialog(position);
-                }
-            }
-        });
-        onAlarmToggleClicked(toggleAlarmButton);
     }
 
     /**
-     * Handles clicks on the positive button of the edit ListEntry dialog.
-     * This includes:
-     * - insert or update the entry in the database
-     * - cancel an existing alarm for the entry, if there is one
-     * - create a new alarm for the entry, if necessary
-     * - update the view, if ListEntries are currently shown
-     * @param alarmButtonIsChecked True if the alarm button is activated, false if not
-     * @param dateString String containing the alarm date in the format specified in Constants.ONLY_DATE_FORMAT
-     * @param timeString String containing the alarm time in the format specified in Constants.ONLY_TIME_FORMAT
-     * @param title The new title of the entry
-     * @param description The new description of the entry
-     * @param listId ID of the List that the entry belongs to
-     * @param position Position in the listEntryList of the entry to be updated
-     * @param alertDialog The edit ListEntry dialog
+     * Determine the index of the list that will be preselected in the Spinner
+     * @param entry The entry for which the dialog is opened
+     * @param lists List of all lists
+     * @return Index of the list that will be preselected in the Spinner
      */
-    private void handleEditDialogPositiveButton(final boolean alarmButtonIsChecked,
-                                                final String dateString, final String timeString,
-                                                final String title, final String description,
-                                                final int listId, final int position,
-                                                final AlertDialog alertDialog) {
-        final boolean isUpdate = position > -1;
-        ListEntry newEntry;
-
-        String newAlarmDateString = null;
-        if (alarmButtonIsChecked) {
-            Date parsedDate;
-            Date parsedTime;
-            try {
-                Log.d(Utilities.getLogTag(), "Date before parsing: " + dateString);
-                Log.d(Utilities.getLogTag(), "Time before parsing: " + timeString);
-
-                parsedDate = Utilities.parseFromLocalDateString(dateString);
-                parsedTime = Utilities.parseFromLocalTimeString(timeString);
-
-                final SimpleDateFormat dateFormat = Utilities.getDateFormat();
-                final SimpleDateFormat timeFormat = Utilities.getTimeFormat();
-
-                final String newDate = dateFormat.format(parsedDate);
-                final String newTime = timeFormat.format(parsedTime);
-
-                newAlarmDateString = newDate + " " + newTime;
-                Log.d(Utilities.getLogTag(), "newAlarmDateString: " + newAlarmDateString);
-            } catch (ParseException e) {
-                e.printStackTrace();
-            }
-        }
-        // If this is an update
-        if (isUpdate) {
-            // Update item by its id
-            newEntry = updateListEntryAndRefresh(title, description, listId, position, newAlarmDateString);
-            AlarmHandler.cancelAlarm(MainActivity.this, listEntryList.get(position));
-            // Show item again
-            showDisplayListEntryDialog(position);
-        } else {
-            // Create new item
-            newEntry = insertListEntryInDBAndRefresh(title, description, listId, newAlarmDateString);
-        }
-
-        if (alarmButtonIsChecked) {
-            final Calendar newAlarmDate = Calendar.getInstance();
-            try {
-                //noinspection ConstantConditions
-                newAlarmDate.setTime(Utilities.getFullDateFormat().parse(newAlarmDateString));
-            } catch (ParseException e) {
-                e.printStackTrace();
-            }
-            AlarmHandler.setAlarm(MainActivity.this, newAlarmDate,
-                    newEntry.getTitle(), newEntry.getId());
-        }
-        // Only update the displayed items if ListEntries are displayed
-        if (currentlyDisplayed.equals(Constants.displayedType.ListEntries)) {
-            ((EntryAdapter) mAdapter).clear();
-            // If all ListEntries are displayed
-            if (displayedList == null) {
-                listEntryList.addAll(db.getAllEntriesOrderedByLastModified());
-            } else {
-                // If the ListEntries of a specific list are displayed
-                ((EntryAdapter) mAdapter).addAll(db.getEntriesOfList(displayedList.getId()));
-            }
-            mAdapter.notifyDataSetChanged();
-        }
-        // Close the dialog
-        alertDialog.dismiss();
-    }
-
-    /**
-     * Populate the Spinner for list selection and
-     * preselect the list that the entry belongs to, if possible
-     * @param listSelection The Spinner object
-     * @param isUpdate True if the Spinner is initialized for the update of an entry,
-     *                 false if a new entry is created
-     * @param entry The entry to be updated
-     */
-    private void initializeListSelectionSpinner(final Spinner listSelection,
-                                                final boolean isUpdate,
-                                                final ListEntry entry) {
-        final List<MyList> lists = db.getAllLists();
-        final ArrayAdapter<MyList> groupAdapter = new ListsSpinnerAdapter(MainActivity.this,
-                android.R.layout.simple_spinner_dropdown_item, lists);
-        listSelection.setAdapter(groupAdapter);
-        listSelection.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
-            @Override
-            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-                Log.d(Utilities.getLogTag(), "Position: " + position);
-                Log.d(Utilities.getLogTag(), "parent.getCount(): " + parent.getCount());
-                if (position == parent.getCount() - 1) {
-                    Log.d(Utilities.getLogTag(), "Inside IF");
-                    showListDialog(-1, listSelection);
-                    Log.d(Utilities.getLogTag(), "Adding new list");
-                }
-            }
-            @Override
-            public void onNothingSelected(AdapterView<?> parent) { }
-        });
-
-        int displayedGroupIndex = -1;
+    private int determineListPreselectionIndex(final ListEntry entry, final List<MyList> lists) {
+        final boolean isUpdate = entry != null;
+        int preselectListIndex = -1;
         // Determine which list name should be preselected in the drop down
         // Determine the index of the list that was shown when the dialog was started or
         // that the current item belongs to
@@ -1134,45 +1179,52 @@ public class MainActivity extends AppCompatActivity {
                 // If a specific list was shown, then preselect it
                 id = displayedList.getId();
             } else {
-                displayedGroupIndex = 0;
+                preselectListIndex = 0;
             }
         } else {
-            // If this is an update, we can get the list ID from the list item
+            // If this is an update, we can get the list ID from the list entry
             id = entry.getListId();
         }
-        if (displayedGroupIndex < 0) {
+        if (preselectListIndex < 0) {
             int i = 0;
             for (MyList list : lists) {
                 // Second, iterate over all lists and stop when we found the right one
                 if (list.getId() == id) {
-                    displayedGroupIndex = i;
+                    preselectListIndex = i;
                     break;
                 }
                 i++;
             }
         }
-        // Preselect the list
-        listSelection.setSelection(displayedGroupIndex);
+        return preselectListIndex;
     }
 
     /**
-     * Show or hide date and time pickers
-     * @param alarmToggleButton The button that was clicked
+     * Populate the Spinner for list selection and
+     * preselect the list that the entry belongs to, if possible
+     * @param listSelection The Spinner object
+     * @param entry The entry to be updated
      */
-    private void onAlarmToggleClicked(final ToggleButton alarmToggleButton) {
-        Log.d(Utilities.getLogTag(), "Alarm toggle clicked");
-        final View rootView = alarmToggleButton.getRootView();
-        final TextView showAlarmDateTextView = rootView.findViewById(R.id.alarmDateTextView);
-        final TextView showAlarmTimeTextView = rootView.findViewById(R.id.alarmTimeTextView);
-        if (alarmToggleButton.isChecked()) {
-            Log.d(Utilities.getLogTag(), "text views visible");
-            showAlarmDateTextView.setVisibility(View.VISIBLE);
-            showAlarmTimeTextView.setVisibility(View.VISIBLE);
-        } else {
-            Log.d(Utilities.getLogTag(), "text views gone");
-            showAlarmDateTextView.setVisibility(View.GONE);
-            showAlarmTimeTextView.setVisibility(View.GONE);
-        }
+    private int initializeListSelectionSpinner(final Spinner listSelection, final ListEntry entry) {
+        final List<MyList> lists = db.getAllLists();
+        final ArrayAdapter<MyList> listAdapter = new ListsSpinnerAdapter(MainActivity.this,
+                R.layout.spinner_item, lists);
+        listAdapter.setDropDownViewResource(R.layout.spinner_dropdown_item);
+        listSelection.setAdapter(listAdapter);
+        listSelection.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                if (position == parent.getCount() - 1) {
+                    showListDialog(-1, listSelection);
+                }
+            }
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) { }
+        });
+        // Preselect the list
+        final int preselectListIndex = determineListPreselectionIndex(entry, lists);
+        listSelection.setSelection(preselectListIndex);
+        return ((MyList)listSelection.getSelectedItem()).getId();
     }
 
     /**
@@ -1219,25 +1271,8 @@ public class MainActivity extends AppCompatActivity {
         switch (id){
             // Show all list entries
             case R.id.action_show_all:
-                // Reset because only entries are displayed, regardless of the lists they belong to
-                displayedList = null;
-                listsList.clear();
-                // Add all list items
-                listEntryList.clear();
-                listEntryList.addAll(db.getAllEntriesOrderedByLastModified());
-                // Set correct adapter
-                mAdapter = new EntryAdapter(listEntryList);
-                recyclerView.setAdapter(mAdapter);
-                if (listEntryList.size() > 0) {
-                    listEntryList.get(0).setShowListName(true);
-                }
-                // Set fab icon
+                displayAllEntries();
                 Utilities.setAddListEntryFAB(MainActivity.this, fab);
-                currentlyDisplayed = Constants.displayedType.ListEntries;
-                // Refresh the view
-                mAdapter.notifyDataSetChanged();
-                // Set title
-                setTitle(R.string.all_entries);
                 return true;
             case R.id.action_show_all_lists:
                 displayLists();
@@ -1250,6 +1285,29 @@ public class MainActivity extends AppCompatActivity {
             default:
                 return super.onOptionsItemSelected(item);
         }
+    }
+
+    /**
+     * Display all list entries
+     */
+    private void displayAllEntries() {
+        // Reset because only entries are displayed, regardless of the lists they belong to
+        displayedList = null;
+        listsList.clear();
+        // Add all list items
+        listEntryList.clear();
+        listEntryList.addAll(db.getAllEntriesOrderedByLastModified());
+        // Set correct adapter
+        mAdapter = new EntryAdapter(listEntryList);
+        recyclerView.setAdapter(mAdapter);
+        if (listEntryList.size() > 0) {
+            listEntryList.get(0).setShowListName(true);
+        }
+        currentlyDisplayed = Constants.displayedType.ListEntries;
+        // Refresh the view
+        mAdapter.notifyDataSetChanged();
+        // Set title
+        setTitle(R.string.all_entries);
     }
 
     /**

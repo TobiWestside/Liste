@@ -25,12 +25,11 @@ public class AlarmHandler {
      */
     public static void setAlarm(final Context context, final Calendar time, final String title, final int id) {
         final AlarmManager alarmManager = (AlarmManager) context.getSystemService(ALARM_SERVICE);
+        final PendingIntent pi = createPendingIntentForAlarm(context, title, id);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, time.getTimeInMillis(),
-                    createPendingIntentForAlarm(context, title, id));
+            alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, time.getTimeInMillis(), pi);
         } else {
-            alarmManager.setExact(AlarmManager.RTC_WAKEUP, time.getTimeInMillis(),
-                    createPendingIntentForAlarm(context, title, id));
+            alarmManager.setExact(AlarmManager.RTC_WAKEUP, time.getTimeInMillis(), pi);
         }
         Log.d(Utilities.getLogTag(), "Alarm set for ListEntry with title: " + title);
     }
@@ -41,9 +40,13 @@ public class AlarmHandler {
      * @param entry The entry for which the reminder is canceled
      */
     public static void cancelAlarm(final Context context, final ListEntry entry) {
+        cancelAlarm(context, entry.getTitle(), entry.getId());
+    }
+
+    public static void cancelAlarm(final Context context, final String title, final int id) {
         final AlarmManager alarmManager = (AlarmManager) context.getSystemService(ALARM_SERVICE);
-        alarmManager.cancel(createPendingIntentForAlarm(context, entry.getTitle(), entry.getId()));
-        Log.d(Utilities.getLogTag(), "Alarm canceled for ListEntry with title: " + entry.getTitle());
+        alarmManager.cancel(createPendingIntentForAlarm(context, title, id));
+        Log.d(Utilities.getLogTag(), "Alarm canceled for ListEntry with title: " + title);
     }
 
     /**
@@ -59,6 +62,6 @@ public class AlarmHandler {
         intent.putExtra(Constants.INTENT_KEY_TITLE, title);
         intent.putExtra(Constants.INTENT_KEY_ID, id);
         Log.d(Utilities.getLogTag(), "AlarmHandler created intent for ListEntry with title: " + title);
-        return PendingIntent.getBroadcast(context, id, intent, 0);
+        return PendingIntent.getBroadcast(context, id, intent, PendingIntent.FLAG_UPDATE_CURRENT);
     }
 }

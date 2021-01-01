@@ -62,8 +62,8 @@ public class ListsSpinnerAdapter extends ArrayAdapter<MyList> {
     public View getDropDownView(int position, View convertView,
                                 @NonNull ViewGroup parent) {
         TextView label = (TextView) super.getDropDownView(position, convertView, parent);
+        label.setBackground(context.getDrawable(R.drawable.dropdown_divider));
         label.setTextColor(Color.BLACK);
-        label.setBackgroundColor(getContext().getResources().getColor(android.R.color.background_light));
         label.setText(lists.get(position).getTitle());
 
         return label;

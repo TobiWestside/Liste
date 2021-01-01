@@ -13,5 +13,5 @@
     <!-- Groups -->
     <string name="lbl_new_list_title">Neue Liste</string>
     <string name="lbl_edit_list_title">Liste bearbeiten</string>
-    <string name="hint_enter_name">Name eingeben!</string>
+    <string name="hint_enter_name">Name eingeben</string>
 </resources>

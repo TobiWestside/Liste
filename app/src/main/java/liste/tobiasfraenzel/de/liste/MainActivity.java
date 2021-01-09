@@ -925,7 +925,7 @@ public class MainActivity extends AppCompatActivity {
                     showTimePickerDialog((TextView) v.getRootView().findViewById(R.id.alarmTimeTextView),
                             defaultAlarmDate);
                 } else {
-                    showTimePickerDialog((TextView) v.getRootView().findViewById(R.id.alarmDateTextView),
+                    showTimePickerDialog((TextView) v.getRootView().findViewById(R.id.alarmTimeTextView),
                             tempAlarmDate);
                 }
             }
